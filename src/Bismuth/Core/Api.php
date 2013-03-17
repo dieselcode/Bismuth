@@ -1,0 +1,204 @@
+<?php
+
+namespace Bismuth\Core;
+
+use \Bismuth\Core\Auth\Auth,
+    \Bismuth\Core\Response;
+
+class Api
+{
+
+    const HTTP_GET      = 'GET';
+    const HTTP_HEAD     = 'HEAD';
+    const HTTP_DELETE   = 'DELETE';
+    const HTTP_POST     = 'POST';
+    const HTTP_PUT      = 'PUT';
+    const HTTP_PATCH    = 'PATCH';
+
+    protected $endpointUrl = '';
+    protected $authObj  = null;
+
+    protected $response = '';
+    protected $headers = '';
+
+    protected $headerHooks = array();
+
+
+    public function __construct(Auth $authObj)
+    {
+        $this->authObj = $authObj;
+    }
+
+    public function __call($method, $args)
+    {
+        // get the method constant
+        $method = constant('self::HTTP_' . strtoupper($method));
+
+        $args = array(
+            'request' => $args[0],
+            'params'  => (!empty($args[1]) ? $args[1] : array()),
+            'input'   => (!empty($args[2]) ? $args[2] : array())
+        );
+
+        switch ($method) {
+
+            case self::HTTP_GET:
+            case self::HTTP_HEAD:
+            case self::HTTP_DELETE:
+                return $this->request($method, $args['request'], $args['params']);
+                break;
+
+            case self::HTTP_POST:
+            case self::HTTP_PATCH:
+            case self::HTTP_PUT:
+                if (empty($args['input'])) {
+                    throw new \Exception('Missing POST/PUT/PATCH parameters');
+                }
+
+                return $this->request($method, $args['request'], $args['params'], $args['input']);
+                break;
+
+        }
+
+        return false;
+    }
+
+    public function addHeaderHook($header, $callback) // can be closure
+    {
+        $this->headerHooks[$header] = $callback;
+    }
+
+    public function setEndpointUrl($url)
+    {
+        $this->endpointUrl = $url;
+    }
+
+    public function request($method, $url, $params = array(), $input = array())
+    {
+        $remoteURL = $this->prepareRequest($url, $params);
+        $queryString = !empty($params) ? utf8_encode(http_build_query($params, '', '&')) : '';
+        $context = array('http' => array());
+
+        // do an initial header setup
+        $headers = array();
+
+        if ($method == self::HTTP_GET) {
+            $remoteURL = $remoteURL . (!empty($queryString) ? '?'.$queryString : '');
+        } else {
+            $headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            $context['http']['content'] = json_encode($input);
+        }
+
+        $context['http']['method'] = $method;
+        $context['http']['timeout'] = 5;
+
+        $auth = $this->authObj->getAuthString();
+        if (!empty($auth)) {
+            $headers['Authorization'] = $auth;
+        }
+
+        $context['http']['header'] = $this->buildHeaders($headers);
+
+        $ctx = stream_context_create($context);
+
+        $this->response = json_decode(file_get_contents($this->endpointUrl . $remoteURL, false, $ctx));
+        $this->headers = $this->parseHeaders(join("\r\n", array_values($http_response_header)) . "\r\n\r\n");
+
+        // call our header hooks if we have any
+        if (!empty($this->headerHooks)) {
+            foreach ($this->headerHooks as $head => $callback) {
+                if (array_key_exists($head, $this->headers)) {
+                    if (!$callback instanceof \Closure) {
+                        call_user_func_array($callback, array($this->headers[$head]));
+                    } else {
+                        $callback($this->headers[$head]);
+                    }
+                }
+            }
+        }
+
+        return new Response($this->headers, $this->response);
+    }
+
+    protected function prepareRequest($url, $params = null)
+    {
+        $hasMatch = preg_match_all('/(:(\w+))/', $url, $matches);
+
+        if (!empty($params)) {
+            ksort($params);
+            $paramKeys = array_keys($params);
+            $paramValues = array_values($params);
+
+            $urlKeys = array_keys(array_flip($matches[2]));
+            sort($urlKeys);
+
+            $urlParams = array_keys(array_flip($matches[1]));
+            sort($urlParams);
+
+            if ($paramKeys === $urlKeys) {
+                return str_replace($urlParams, $paramValues, $url);
+            }
+        }
+
+        return $url;
+    }
+
+    public static function parseHeaders($response)
+    {
+        $parts = explode("\r\n\r\n", $response, 2);
+
+        if (count($parts) != 2) {
+            $parts = array($parts, '');
+        }
+
+        list($headers, ) = $parts;
+
+        $return = array();
+        foreach (explode("\r\n", $headers) as $header) {
+            $parts = explode(': ', $header, 2);
+            if (count($parts) == 2) {
+                list($name, $value) = $parts;
+                if (!isset($return[$name])) {
+                    $return[$name] = $value;
+                } else {
+                    if (is_array($return[$name])) {
+                        $return[$name][] = $value;
+                    } else {
+                        $return[$name] = array($return[$name], $value);
+                    }
+                }
+            }
+        }
+
+        // fix etags
+        if (array_key_exists('ETag', $return)) {
+            $return['ETag'] = str_replace('"', '', $return['ETag']);
+        }
+
+        // parse the status line even further
+        list($return['HTTP_CODE'], $return['HTTP_STATUS']) = explode(' ', $return['Status'], 2);
+
+        return $return;
+    }
+
+    protected function buildHeaders($header_arr)
+    {
+        $headers = '';
+        foreach ($header_arr as $k => $v) {
+            $headers .= $k . ': ' . $v . "\r\n";
+        }
+
+        return $headers;
+    }
+
+    /**
+     * TODO: This is highly dependent on the server having a proper timezone
+     */
+    public function timeISO8601()
+    {
+        return gmdate('c', time());
+    }
+
+}
+
+?>
