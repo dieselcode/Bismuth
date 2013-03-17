@@ -21,6 +21,7 @@ class GitHub extends Api
     {
         parent::__construct($authObj);
         $this->setEndpointUrl('https://api.github.com');
+        $this->setTransferType(self::TRANSFER_JSON);
 
         // hook into the headers to get the rate limits
         $this->addHeaderHook('X-RateLimit-Limit',       function($limit) { $this->rateLimit = $limit; });
@@ -34,46 +35,46 @@ class GitHub extends Api
      */
     public function repo($repo, $owner = '')
     {
-        if ($this->getRateLimitRemaining() > 1) {
-            // setup our dynamic object
-            $export = new Object([
-                'owner' => $owner,
-                'repo'  => $repo
-            ]);
-
-            // reference our current object for the exports
-            $obj =& $this;
-
-            /**
-             * Get the repo information
-             */
-            $export->get = function() use ($obj) {
-                $response = $obj->get(
-                    '/repos/:owner/:repo',
-                    array('owner' => $this->owner, 'repo' => $this->repo)
-                );
-
-                return ($response->ok) ? $response->getData() : false;
-            };
-
-            /**
-             * Save the patch information
-             */
-            $export->edit = function($patch) use ($obj) {
-                $response = $obj->patch(
-                    '/repos/:owner/:repo',
-                    array('owner' => $this->owner, 'repo' => $this->repo),
-                    $patch
-                );
-
-                return ($response->ok) ? true : false;
-            };
-
-            // expose our chained methods
-            return $export;
-        } else {
+        if (!$this->checkRateLimit()) {
             throw new \Exception('Rate limit is too high, please wait and try again');
         }
+
+        // setup our dynamic object
+        $export = new Object([
+            'owner' => $owner,
+            'repo'  => $repo
+        ]);
+
+        // reference our current object for the exports
+        $obj =& $this;
+
+        /**
+         * Get the repo information
+         */
+        $export->get = function() use ($obj) {
+            $response = $obj->get(
+                '/repos/:owner/:repo',
+                array('owner' => $this->owner, 'repo' => $this->repo)
+            );
+
+            return ($response->ok) ? $response->getData() : false;
+        };
+
+        /**
+         * Save the patch information
+         */
+        $export->edit = function($patch) use ($obj) {
+            $response = $obj->patch(
+                '/repos/:owner/:repo',
+                array('owner' => $this->owner, 'repo' => $this->repo),
+                $patch
+            );
+
+            return ($response->ok) ? true : false;
+        };
+
+        // expose our chained methods
+        return $export;
     }
 
     /**
@@ -81,101 +82,124 @@ class GitHub extends Api
      */
     public function user($user = '')
     {
-        if ($this->getRateLimitRemaining() > 1) {
-            // setup our dynamic object
-            $export = new Object([
-                'user' => $user
-            ]);
+        if (!$this->checkRateLimit()) {
+            throw new \Exception('Rate limit is too high, please wait and try again');
+        }
 
-            // reference our current object for the exports
-            $obj =& $this;
+        // setup our dynamic object
+        $export = new Object([
+            'user' => $user
+        ]);
+
+        // reference our current object for the exports
+        $obj =& $this;
+
+        /**
+         * Get a single user
+         * user(<user>)->get()
+         */
+        $export->get = function() use ($obj) {
+            $response = $obj->get(
+                '/users/:user',
+                array('user' => $this->user)
+            );
+
+            return ($response->ok) ? $response->getData() : false;
+        };
+
+        /**
+         * Get the current user (logged in)
+         * user()->current()
+         */
+        $export->current = function() use ($obj) {
+            $export = new Object();
 
             /**
-             * Get a single user
+             * user()->current()->get()
              */
             $export->get = function() use ($obj) {
-                $response = $obj->get(
-                    '/users/:user',
-                    array('user' => $this->user)
-                );
-
+                $response = $obj->get('/user');
                 return ($response->ok) ? $response->getData() : false;
             };
 
             /**
-             * Get the current user (logged in)
+             * user()->current()->emails()
              */
-            $export->current = function() use ($obj) {
+            $export->emails = function() use ($obj) {
                 $export = new Object();
 
+                /**
+                 * user()->current()->emails()->get()
+                 */
                 $export->get = function() use ($obj) {
-                    $response = $obj->get('/user');
+                    $response = $obj->get('/user/emails');
                     return ($response->ok) ? $response->getData() : false;
-                };
-
-                $export->emails = function() use ($obj) {
-                    $export = new Object();
-
-                    $export->get = function() {
-                        $response = $obj->get('/user/emails');
-                        return ($response->ok) ? $response->getData() : false;
-                    };
-
-                    $export->add = function($email) {
-                        $response = $obj->post(
-                            '/user/emails',
-                            null,
-                            is_array($email) ? $email : array($email)
-                        );
-
-                        return ($response->ok) ? true : false;
-                    };
-
-                    $export->delete = function($email) {
-                        $response = $obj->delete(
-                            '/user/emails',
-                            null,
-                            is_array($email) ? $email : array($email)
-                        );
-
-                        return ($response->ok) ? true : false;
-                    };
                 };
 
                 /**
-                 * Keys needs to be extended to allow for adding and deleting keys
+                 * user()->current()->emails()->add(<email>)
                  */
-                $export->keys = function($id = null) use ($obj) {
-                    $keyURL = !empty($id) ? '/user/keys/:id' : '/user/keys';
-                    $response = $obj->get(
-                        $keyURL,
-                        !empty($id) ? array('id' => $id) : null
+                $export->add = function($email) use ($obj) {
+                    $response = $obj->post(
+                        '/user/emails',
+                        null,
+                        is_array($email) ? $email : array($email)
                     );
 
-                    return ($response->ok) ? $response->getData() : false;
+                    return ($response->ok) ? true : false;
+                };
+
+                /**
+                 * user()->current()->emails()->delete(<email>)
+                 */
+                $export->delete = function($email) use ($obj) {
+                    $response = $obj->delete(
+                        '/user/emails',
+                        null,
+                        is_array($email) ? $email : array($email)
+                    );
+
+                    return ($response->ok) ? true : false;
                 };
 
                 return $export;
             };
 
             /**
-             * Get a users SSH keys
+             * Keys needs to be extended to allow for adding and deleting keys
              */
-            $export->keys = function() use ($obj) {
+            $export->keys = function($id = null) use ($obj) {
+                $keyURL = !empty($id) ? '/user/keys/:id' : '/user/keys';
                 $response = $obj->get(
-                    '/users/:user/keys',
-                    array('user' => $this->user)
+                    $keyURL,
+                    !empty($id) ? array('id' => $id) : null
                 );
 
                 return ($response->ok) ? $response->getData() : false;
             };
 
-
             return $export;
+        };
 
-        } else {
-            throw new \Exception('Rate limit is too high, please wait and try again');
-        }
+        /**
+         * Get a users SSH keys
+         */
+        $export->keys = function() use ($obj) {
+            $response = $obj->get(
+                '/users/:user/keys',
+                array('user' => $this->user)
+            );
+
+            return ($response->ok) ? $response->getData() : false;
+        };
+
+
+        return $export;
+    }
+
+    public function checkRateLimit()
+    {
+        return !!($this->getRateLimitRemaining() > 1);
     }
 
     public function getRateLimitRemaining()

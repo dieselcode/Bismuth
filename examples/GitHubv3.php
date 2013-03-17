@@ -8,7 +8,7 @@ try {
     );
 
     // update our repo with the patch data
-    $api = $github->user()->current()->keys();
+    $api = $github->user()->current()->emails()->get();
 
     // true = it worked, false = we failed
     var_dump($api);

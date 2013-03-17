@@ -15,11 +15,15 @@ class Api
     const HTTP_PUT      = 'PUT';
     const HTTP_PATCH    = 'PATCH';
 
-    protected $endpointUrl = '';
-    protected $authObj  = null;
+    const TRANSFER_JSON     = 'application/json';
+    const TRANSFER_FORMENC  = 'application/x-www-form-urlencoded';
+
+    protected $transferType = self::TRANSFER_JSON;
+    protected $endpointUrl  = '';
+    protected $authObj      = null;
 
     protected $response = '';
-    protected $headers = '';
+    protected $headers  = '';
 
     protected $headerHooks = array();
 
@@ -73,26 +77,49 @@ class Api
         $this->endpointUrl = $url;
     }
 
+    public function setTransferType($transferType = self::TRANSFER_JSON)
+    {
+        $this->transferType = $transferType;
+    }
+
     public function request($method, $url, $params = array(), $input = array())
     {
         $remoteURL = $this->prepareRequest($url, $params);
         $queryString = !empty($params) ? utf8_encode(http_build_query($params, '', '&')) : '';
+        $inputString = !empty($input)  ? utf8_encode(http_build_query($input,  '', '&')) : '';
         $context = array('http' => array());
 
         // do an initial header setup
         $headers = array();
 
-        if ($method == self::HTTP_GET) {
-            $remoteURL = $remoteURL . (!empty($queryString) ? '?'.$queryString : '');
-        } else {
-            $headers['Content-Type'] = 'application/x-www-form-urlencoded';
-            $context['http']['content'] = json_encode($input);
+        switch ($this->transferType) {
+            case self::TRANSFER_JSON:
+                $headers['Content-Type'] = self::TRANSFER_JSON;
+
+                if ($method == self::HTTP_GET) {
+                    $remoteURL = $remoteURL . (!empty($queryString) ? '?'.$queryString : '');
+                }
+
+                if (!empty($input)) {
+                    $context['http']['content'] = json_encode($input);
+                }
+                break;
+            case self::TRANSFER_FORMENC:
+                $headers['Content-Type'] = self::TRANSFER_FORMENC;
+
+                $remoteURL = $remoteURL . (!empty($queryString) ? '?'.$queryString : '');
+
+                if (!empty($input)) {
+                    $context['http']['content'] = $inputString;
+                }
+                break;
         }
 
         $context['http']['method'] = $method;
         $context['http']['timeout'] = 5;
 
         $auth = $this->authObj->getAuthString();
+
         if (!empty($auth)) {
             $headers['Authorization'] = $auth;
         }
