@@ -33,7 +33,11 @@ class Api
 
     protected $headerHooks = array();
 
-
+    /**
+     * TODO: Add a second parameter here and refactor in some type of cache transport
+     *   - Check IF-Modified-Since, Last-Modified, and If-None-Match headers for caching purposes
+     *   - revalidate cache on
+     */
     public function __construct(Auth $authObj)
     {
         $this->authObj = $authObj;
@@ -208,11 +212,6 @@ class Api
                     }
                 }
             }
-        }
-
-        // fix etags
-        if (array_key_exists('ETag', $return)) {
-            $return['ETag'] = str_replace('"', '', $return['ETag']);
         }
 
         // parse the status line even further
