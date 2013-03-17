@@ -22,6 +22,8 @@ class Api
     protected $endpointUrl  = '';
     protected $authObj      = null;
 
+    protected $sendHeaders  = array();
+
     protected $response = '';
     protected $headers  = '';
 
@@ -77,6 +79,11 @@ class Api
         $this->endpointUrl = $url;
     }
 
+    public function addHeader($header, $value)
+    {
+        $this->sendHeaders[$header] = $value;
+    }
+
     public function setTransferType($transferType = self::TRANSFER_JSON)
     {
         $this->transferType = $transferType;
@@ -89,12 +96,9 @@ class Api
         $inputString = !empty($input)  ? utf8_encode(http_build_query($input,  '', '&')) : '';
         $context = array('http' => array());
 
-        // do an initial header setup
-        $headers = array();
-
         switch ($this->transferType) {
             case self::TRANSFER_JSON:
-                $headers['Content-Type'] = self::TRANSFER_JSON;
+                $this->addHeader('Content-Type', self::TRANSFER_JSON);
 
                 if ($method == self::HTTP_GET) {
                     $remoteURL = $remoteURL . (!empty($queryString) ? '?'.$queryString : '');
@@ -105,7 +109,7 @@ class Api
                 }
                 break;
             case self::TRANSFER_FORMENC:
-                $headers['Content-Type'] = self::TRANSFER_FORMENC;
+                $this->addHeader('Content-Type', self::TRANSFER_FORMENC);
 
                 $remoteURL = $remoteURL . (!empty($queryString) ? '?'.$queryString : '');
 
@@ -121,10 +125,10 @@ class Api
         $auth = $this->authObj->getAuthString();
 
         if (!empty($auth)) {
-            $headers['Authorization'] = $auth;
+            $this->addHeader('Authorization', $auth);
         }
 
-        $context['http']['header'] = $this->buildHeaders($headers);
+        $context['http']['header'] = $this->buildHeaders($this->sendHeaders);
 
         $ctx = stream_context_create($context);
 

@@ -23,57 +23,46 @@ class GitHub extends Api
         $this->setEndpointUrl('https://api.github.com');
         $this->setTransferType(self::TRANSFER_JSON);
 
+        // add support for the custom Github media type
+        $this->addHeader('Accept', 'application/vnd.github.beta+json');
+
         // hook into the headers to get the rate limits
         $this->addHeaderHook('X-RateLimit-Limit',       function($limit) { $this->rateLimit = $limit; });
         $this->addHeaderHook('X-RateLimit-Remaining',   function($limit) { $this->rateLimitRemaining = $limit; });
     }
 
     /**
-     * This is where the magic happens.  We return a javascript-ish object,
-     * that can be directly used via chaining.  This can get intricate, but
-     * it also cuts down on space.
+     * Abstract the orgs endpoint
      */
-    public function repo($repo, $owner = '')
+    public function orgs($org = '')
     {
         if (!$this->checkRateLimit()) {
             throw new \Exception('Rate limit is too high, please wait and try again');
         }
 
-        // setup our dynamic object
-        $export = new Object([
-            'owner' => $owner,
-            'repo'  => $repo
-        ]);
-
-        // reference our current object for the exports
-        $obj =& $this;
+        $export = new Object(['org' => $org]);
+        $obj    =& $this;
 
         /**
-         * Get the repo information
+         * orgs(<org>)->get()
          */
         $export->get = function() use ($obj) {
             $response = $obj->get(
-                '/repos/:owner/:repo',
-                array('owner' => $this->owner, 'repo' => $this->repo)
+                '/orgs/:org',
+                array('org' => $this->org)
             );
 
             return ($response->ok) ? $response->getData() : false;
         };
 
         /**
-         * Save the patch information
+         * orgs(<org>)->edit(<patch)
          */
         $export->edit = function($patch) use ($obj) {
-            $response = $obj->patch(
-                '/repos/:owner/:repo',
-                array('owner' => $this->owner, 'repo' => $this->repo),
-                $patch
-            );
-
+            $response = $obj->patch('/orgs/:org', null, $patch);
             return ($response->ok) ? true : false;
         };
 
-        // expose our chained methods
         return $export;
     }
 
@@ -87,12 +76,8 @@ class GitHub extends Api
         }
 
         // setup our dynamic object
-        $export = new Object([
-            'user' => $user
-        ]);
-
-        // reference our current object for the exports
-        $obj =& $this;
+        $export = new Object(['user' => $user]);
+        $obj    =& $this;
 
         /**
          * Get a single user
@@ -105,6 +90,52 @@ class GitHub extends Api
             );
 
             return ($response->ok) ? $response->getData() : false;
+        };
+
+        /**
+         * User Organizations
+         * user(<user>)->orgs()
+         */
+        $export->orgs = function() use ($obj) {
+            $export = new Object();
+
+            /**
+             * user(<user>)->orgs()->list()
+             */
+            $export->list = function() use ($obj) {
+                $response = $obj->get(
+                    '/users/:user/orgs',
+                    array('user' => $this->user)
+                );
+
+                return ($response->ok) ? $response->getData() : false;
+            };
+
+            return $export;
+        };
+
+        /**
+         * User Gists
+         * user(<user>)->gists()
+         */
+        $export->gists = function() use($obj, $export) {
+            // thisis a horrible hack, but it works
+            $export = new Object(['user' => $export->user]);
+
+            /**
+             * user(<user>)->gists()->list(<since>)
+             */
+            $export->list = function($since = '') use($obj) {
+                $response = $obj->get(
+                    '/users/:user/gists',
+                    array('user' => $this->user),
+                    !empty($since) ? array('since' => $since) : ''
+                );
+
+                return ($response->ok) ? $response->getData() : false;
+            };
+
+            return $export;
         };
 
         /**
@@ -123,15 +154,49 @@ class GitHub extends Api
             };
 
             /**
+             * user()->current()->repos()
+             */
+            $export->repos = function() use ($obj) {
+                $export = new Object();
+
+                /**
+                 * user()->current()->repos()->list(<options>)
+                 */
+                $export->list = function($options = array()) use ($obj) {
+                    $response = $obj->get('/user/repos', $options);
+                    return ($response->ok) ? $response->getData() : false;
+                };
+
+                return $export;
+            };
+
+            /**
+             * user()->current()->orgs()
+             */
+            $export->orgs = function() use ($obj) {
+                $export = new Object();
+
+                /**
+                 * user()->current()->orgs()->list()
+                 */
+                $export->list = function() use ($obj) {
+                    $response = $obj->get('/user/orgs');
+                    return ($response->ok) ? $response->getData() : false;
+                };
+
+                return $export;
+            };
+
+            /**
              * user()->current()->emails()
              */
             $export->emails = function() use ($obj) {
                 $export = new Object();
 
                 /**
-                 * user()->current()->emails()->get()
+                 * user()->current()->emails()->list()
                  */
-                $export->get = function() use ($obj) {
+                $export->list = function() use ($obj) {
                     $response = $obj->get('/user/emails');
                     return ($response->ok) ? $response->getData() : false;
                 };
@@ -162,35 +227,12 @@ class GitHub extends Api
                     return ($response->ok) ? true : false;
                 };
 
+
                 return $export;
             };
 
-            /**
-             * Keys needs to be extended to allow for adding and deleting keys
-             */
-            $export->keys = function($id = null) use ($obj) {
-                $keyURL = !empty($id) ? '/user/keys/:id' : '/user/keys';
-                $response = $obj->get(
-                    $keyURL,
-                    !empty($id) ? array('id' => $id) : null
-                );
-
-                return ($response->ok) ? $response->getData() : false;
-            };
 
             return $export;
-        };
-
-        /**
-         * Get a users SSH keys
-         */
-        $export->keys = function() use ($obj) {
-            $response = $obj->get(
-                '/users/:user/keys',
-                array('user' => $this->user)
-            );
-
-            return ($response->ok) ? $response->getData() : false;
         };
 
 

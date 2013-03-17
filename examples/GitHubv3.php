@@ -8,12 +8,21 @@ try {
     );
 
     // update our repo with the patch data
-    $api = $github->user()->current()->emails()->get();
+    $api = $github
+            ->user()                    // user object
+            ->current()                 // current user (logged in)
+            ->repos()                   // repository object
+            ->list(array(               // repository list (with options)
+                'sort' => 'full_name',
+                'direction' => 'asc'
+            ));
 
-    // true = it worked, false = we failed
-    var_dump($api);
+    foreach ($api as $k => $v) {
+        echo $v->full_name . ' - (Created: ' . $v->created_at . ')' . PHP_EOL;
+    }
 
 } catch (Exception $e) {
     var_dump($e->getMessage());
 }
+
 ?>
