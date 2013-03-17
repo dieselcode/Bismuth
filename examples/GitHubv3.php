@@ -17,9 +17,7 @@ try {
                 'direction' => 'asc'
             ));
 
-    foreach ($api as $k => $v) {
-        echo $v->full_name . ' - (Created: ' . $v->created_at . ')' . PHP_EOL;
-    }
+    var_dump($api[0]);
 
 } catch (Exception $e) {
     var_dump($e->getMessage());

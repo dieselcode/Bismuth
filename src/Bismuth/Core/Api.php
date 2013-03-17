@@ -18,7 +18,11 @@ class Api
     const TRANSFER_JSON     = 'application/json';
     const TRANSFER_FORMENC  = 'application/x-www-form-urlencoded';
 
+    const RETURN_JSON_ARRAY  = 1;
+    const RETURN_JSON_OBJECT = 0;
+
     protected $transferType = self::TRANSFER_JSON;
+    protected $returnStyle  = self::RETURN_JSON_OBJECT;
     protected $endpointUrl  = '';
     protected $authObj      = null;
 
@@ -89,6 +93,11 @@ class Api
         $this->transferType = $transferType;
     }
 
+    public function setReturnStyle($returnStyle = self::RETURN_JSON_OBJECT)
+    {
+        $this->returnStyle = $returnStyle;
+    }
+
     public function request($method, $url, $params = array(), $input = array())
     {
         $remoteURL = $this->prepareRequest($url, $params);
@@ -132,7 +141,7 @@ class Api
 
         $ctx = stream_context_create($context);
 
-        $this->response = json_decode(file_get_contents($this->endpointUrl . $remoteURL, false, $ctx));
+        $this->response = json_decode(file_get_contents($this->endpointUrl . $remoteURL, false, $ctx), $this->returnStyle);
         $this->headers = $this->parseHeaders(join("\r\n", array_values($http_response_header)) . "\r\n\r\n");
 
         // call our header hooks if we have any
