@@ -1,0 +1,24 @@
+{
+    "name": "dieselcode/Bismuth",
+    "type": "library",
+    "description": "API Utility Library for REST Interfaces",
+    "keywords": ["api","REST"],
+    "homepage": "http://github.com/dieselcode/Bismuth",
+    "license": "LGPL",
+    "authors": [
+        {
+            "name": "Andrew Heebner",
+            "email": "andrew.heebner@gmail.com",
+            "homepage": "http://github.com/dieselcode",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.6"
+    },
+    "autoload": {
+        "psr-0": {
+            "Bismuth": "src"
+        }
+    }
+}
