@@ -17,13 +17,13 @@ class GitHub extends Api
      *
      * To create other endpoints, use this type of setup, and then everything else is pragmatic
      */
-    public function __construct(Auth $authObj)
+    public function __construct(Auth $authObj, $cacheObj = null)
     {
-        parent::__construct($authObj);
+        parent::__construct($authObj, $cacheObj);
 
         $this->setEndpointUrl('https://api.github.com');
         $this->setTransferType(self::TRANSFER_JSON);
-        $this->setReturnStyle(self::RETURN_JSON_ARRAY);
+        $this->setReturnStyle(self::RETURN_JSON_OBJECT);
 
         // add support for the custom Github media type
         $this->addHeader('Accept', 'application/vnd.github.beta+json');

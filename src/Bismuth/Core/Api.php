@@ -4,6 +4,7 @@ namespace Bismuth\Core;
 
 use \Bismuth\Core\Auth\Auth,
     \Bismuth\Core\Response;
+use Bismuth\Tools\Object;
 
 class Api
 {
@@ -25,6 +26,7 @@ class Api
     protected $returnStyle  = self::RETURN_JSON_OBJECT;
     protected $endpointUrl  = '';
     protected $authObj      = null;
+    protected $cacheObj     = null;
 
     protected $sendHeaders  = array();
 
@@ -33,14 +35,19 @@ class Api
 
     protected $headerHooks = array();
 
+    // used for conditional requests
+    protected $lastETag     = null;
+    protected $lastModified = null;
+
     /**
      * TODO: Add a second parameter here and refactor in some type of cache transport
      *   - Check IF-Modified-Since, Last-Modified, and If-None-Match headers for caching purposes
      *   - revalidate cache on
      */
-    public function __construct(Auth $authObj)
+    public function __construct(Auth $authObj, $cacheObj = null)
     {
         $this->authObj = $authObj;
+        $this->cacheObj = $cacheObj;
     }
 
     public function __call($method, $args)
@@ -104,10 +111,10 @@ class Api
 
     public function request($method, $url, $params = array(), $input = array())
     {
-        $remoteURL = $this->prepareRequest($url, $params);
-        $queryString = !empty($params) ? utf8_encode(http_build_query($params, '', '&')) : '';
-        $inputString = !empty($input)  ? utf8_encode(http_build_query($input,  '', '&')) : '';
-        $context = array('http' => array());
+        $remoteURL      = $this->prepareRequest($url, $params);
+        $queryString    = !empty($params) ? utf8_encode(http_build_query($params, '', '&')) : '';
+        $inputString    = !empty($input)  ? utf8_encode(http_build_query($input,  '', '&')) : '';
+        $context        = array('http' => array());
 
         switch ($this->transferType) {
             case self::TRANSFER_JSON:
@@ -130,6 +137,18 @@ class Api
                     $context['http']['content'] = $inputString;
                 }
                 break;
+        }
+
+        /**
+         * Cache check
+         */
+        if (!empty($this->cacheObj)) {
+            $cache = $this->cacheObj->getCache($remoteURL);
+
+            if ($cache !== false) {
+                // return the Response object
+                return $cache;
+            }
         }
 
         $context['http']['method'] = $method;
@@ -161,7 +180,13 @@ class Api
             }
         }
 
-        return new Response($this->headers, $this->response);
+        $response = new Response($this->headers, $this->response);
+
+        if (!empty($this->cacheObj)) {
+            $this->cacheObj->setCache($remoteURL, $response);
+        }
+
+        return $response;
     }
 
     protected function prepareRequest($url, $params = null)
