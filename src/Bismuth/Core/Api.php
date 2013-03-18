@@ -163,7 +163,7 @@ class Api
 
         $ctx = stream_context_create($context);
 
-        $this->response = json_decode(file_get_contents($this->endpointUrl . $remoteURL, false, $ctx), $this->returnStyle);
+        $this->response = @json_decode(file_get_contents($this->endpointUrl . $remoteURL, false, $ctx), $this->returnStyle);
         $this->headers = $this->parseHeaders(join("\r\n", array_values($http_response_header)) . "\r\n\r\n");
 
         // call our header hooks if we have any
@@ -171,9 +171,9 @@ class Api
             foreach ($this->headerHooks as $head => $callback) {
                 if (array_key_exists($head, $this->headers)) {
                     if (!$callback instanceof \Closure) {
-                        call_user_func_array($callback, array($this->headers[$head]));
+                        call_user_func_array($callback, array($this->headers[$head], $this->response));
                     } else {
-                        $callback($this->headers[$head]);
+                        $callback($this->headers[$head], $this->response);
                     }
                 }
             }
@@ -182,7 +182,7 @@ class Api
         $response = new Response($this->headers, $this->response);
 
         if (!empty($this->cacheObj)) {
-            $this->cacheObj->setCache($remoteURL, $response);
+            $this->cacheObj->setCache($remoteURL, $response, true);
         }
 
         return $response;
