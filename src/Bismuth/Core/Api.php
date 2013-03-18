@@ -39,11 +39,7 @@ class Api
     protected $lastETag     = null;
     protected $lastModified = null;
 
-    /**
-     * TODO: Add a second parameter here and refactor in some type of cache transport
-     *   - Check IF-Modified-Since, Last-Modified, and If-None-Match headers for caching purposes
-     *   - revalidate cache on
-     */
+
     public function __construct(Auth $authObj, $cacheObj = null)
     {
         $this->authObj = $authObj;
@@ -146,13 +142,16 @@ class Api
             $cache = $this->cacheObj->getCache($remoteURL);
 
             if ($cache !== false) {
-                // return the Response object
-                return $cache;
+                // ensure the data is valid
+                if (($cache instanceof Response) && !empty($cache->data)) {
+                    // return the Response object
+                    return $cache;
+                }
             }
         }
 
         $context['http']['method'] = $method;
-        $context['http']['timeout'] = 5;
+        $context['http']['timeout'] = 3;
 
         $auth = $this->authObj->getAuthString();
 

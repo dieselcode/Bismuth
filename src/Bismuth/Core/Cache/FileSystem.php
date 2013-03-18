@@ -1,8 +1,8 @@
 <?php
 
-namespace Bismuth\Tools;
+namespace Bismuth\Core\Cache;
 
-class HTTPCache
+class FileSystem implements CacheInterface
 {
 
     public $options     = array(
@@ -16,7 +16,7 @@ class HTTPCache
         $this->options = $options;
 
         if (empty($this->options['cache_path'])) {
-            $this->options['cache_path'] = dirname(dirname(dirname(dirname(__FILE__)))) . '/cache/';
+            $this->options['cache_path'] = dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/cache/';
         }
 
         if (empty($this->options['cache_ext'])) {

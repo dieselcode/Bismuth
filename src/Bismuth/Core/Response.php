@@ -4,10 +4,9 @@ namespace Bismuth\Core;
 
 class Response
 {
-    private $data = '';
-    private $headers = array();
-
-    public  $ok = false;
+    public $data = '';
+    public $headers = array();
+    public $ok = false;
 
     public function __construct($headers, $data)
     {

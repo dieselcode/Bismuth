@@ -5,14 +5,9 @@ include '../vendor/autoload.php';
 try {
     $github = new \Bismuth\Endpoint\GitHub(
         new \Bismuth\Core\Auth\Basic('<username>', '<password>'),
-        new \Bismuth\Tools\HTTPCache([
-            'cache_ext'     => '.bismuth',
-            'cache_max_age' => 3600,
-            'cache_path'    => dirname(__FILE__) . '/cache/'
-        ])
+        new \Bismuth\Core\Cache\FileSystem()
     );
 
-    // update our repo with the patch data
     $api = $github
             ->user()                    // user object
             ->current()                 // current user (logged in)
