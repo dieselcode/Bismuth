@@ -4,9 +4,10 @@ namespace Bismuth\Core;
 
 class Response
 {
-    public $data = '';
+    public $data    = '';
     public $headers = array();
-    public $ok = false;
+    public $ok      = false;
+    public $cached  = false;
 
     public function __construct($headers, $data)
     {
@@ -17,6 +18,16 @@ class Response
         if ($this->getHeaders('HTTP_CODE') == 200) {
             $this->ok = true;
         }
+    }
+
+    public function setCached($isCached)
+    {
+        $this->cached = $isCached;
+    }
+
+    public function isCached()
+    {
+        return $this->cached;
     }
 
     public function getData()

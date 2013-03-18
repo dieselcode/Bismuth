@@ -73,10 +73,15 @@ class FileSystem implements CacheInterface
         return md5($path) . $this->options['cache_ext'];
     }
 
-    function isSerialized($data)
+    public function isSerialized($data)
     {
         $content = @unserialize($data);
         return ($data === 'b:0;' || $content !== false) ? true : false;
+    }
+
+    public function getCacheFileName($file)
+    {
+        return $this->generateFileName($file);
     }
 
     public function getCachePath()

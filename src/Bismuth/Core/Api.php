@@ -143,7 +143,7 @@ class Api
 
             if ($cache !== false) {
                 // ensure the data is valid
-                if (($cache instanceof Response) && !empty($cache->data)) {
+                if (($cache instanceof Response) && $cache->isCached()) {
                     // return the Response object
                     return $cache;
                 }
@@ -179,13 +179,16 @@ class Api
             }
         }
 
-        $response = new Response($this->headers, $this->response);
+        $responseObj = new Response($this->headers, $this->response);
 
         if (!empty($this->cacheObj)) {
-            $this->cacheObj->setCache($remoteURL, $response, true);
+            $cachedResponse = $responseObj;
+            $cachedResponse->setCached(true);
+            $this->cacheObj->setCache($remoteURL, $cachedResponse, true);
         }
 
-        return $response;
+        // return the live result
+        return $responseObj;
     }
 
     protected function prepareRequest($url, $params = null)
