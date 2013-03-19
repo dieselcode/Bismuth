@@ -22,8 +22,6 @@ class GitHub extends Api
         parent::__construct($authObj, $cacheObj);
 
         $this->setEndpointUrl('https://api.github.com');
-        $this->setTransferType(self::TRANSFER_JSON);
-        $this->setReturnStyle(self::RETURN_JSON_OBJECT);
 
         // add support for the custom Github media type
         $this->addHeader('Accept', 'application/vnd.github.beta+json');
@@ -38,9 +36,7 @@ class GitHub extends Api
      */
     public function orgs($org = '')
     {
-        if (!$this->checkRateLimit()) {
-            throw new \Exception('Rate limit is too high, please wait and try again');
-        }
+        $this->checkRateLimit();
 
         $export = new Object(['org' => $org]);
         $obj    =& $this;
@@ -49,10 +45,7 @@ class GitHub extends Api
          * orgs(<org>)->get()
          */
         $export->get = function() use ($obj) {
-            $response = $obj->get(
-                '/orgs/:org',
-                array('org' => $this->org)
-            );
+            $response = $obj->get('/orgs/:org', array('org' => $this->org));
 
             return ($response->ok) ? $response->getData() : false;
         };
@@ -61,7 +54,7 @@ class GitHub extends Api
          * orgs(<org>)->edit(<patch)
          */
         $export->edit = function($patch) use ($obj) {
-            $response = $obj->patch('/orgs/:org', null, $patch);
+            $response = $obj->patch('/orgs/:org', array('org' => $this->org), $patch);
             return ($response->ok) ? true : false;
         };
 
@@ -73,9 +66,7 @@ class GitHub extends Api
      */
     public function user($user = '')
     {
-        if (!$this->checkRateLimit()) {
-            throw new \Exception('Rate limit is too high, please wait and try again');
-        }
+        $this->checkRateLimit();
 
         // setup our dynamic object
         $export = new Object(['user' => $user]);
@@ -86,11 +77,7 @@ class GitHub extends Api
          * user(<user>)->get()
          */
         $export->get = function() use ($obj) {
-            $response = $obj->get(
-                '/users/:user',
-                array('user' => $this->user)
-            );
-
+            $response = $obj->get('/users/:user', array('user' => $this->user));
             return ($response->ok) ? $response->getData() : false;
         };
 
@@ -105,11 +92,7 @@ class GitHub extends Api
              * user(<user>)->orgs()->list()
              */
             $export->list = function() use ($obj) {
-                $response = $obj->get(
-                    '/users/:user/orgs',
-                    array('user' => $this->user)
-                );
-
+                $response = $obj->get('/users/:user/orgs', array('user' => $this->user));
                 return ($response->ok) ? $response->getData() : false;
             };
 
@@ -120,18 +103,18 @@ class GitHub extends Api
          * User Gists
          * user(<user>)->gists()
          */
-        $export->gists = function() use($obj, $export) {
-            // thisis a horrible hack, but it works
+        $export->gists = function() use ($obj, $export) {
+            // this is a horrible hack, but it works
             $export = new Object(['user' => $export->user]);
 
             /**
              * user(<user>)->gists()->list(<since>)
              */
-            $export->list = function($since = '') use($obj) {
+            $export->list = function($since = '') use ($obj) {
                 $response = $obj->get(
                     '/users/:user/gists',
                     array('user' => $this->user),
-                    !empty($since) ? array('since' => $since) : ''
+                    !empty($since) ? array('since' => $this->timeISO8601(strtotime($since))) : ''
                 );
 
                 return ($response->ok) ? $response->getData() : false;
@@ -243,12 +226,21 @@ class GitHub extends Api
 
     public function checkRateLimit()
     {
-        return !!($this->getRateLimitRemaining() > 1);
+        if ($this->getRateLimitRemaining() == 0) {
+            throw new \Exception('Rate limit is too high, please wait and try again');
+        }
+
+        return true;
     }
 
     public function getRateLimitRemaining()
     {
         return $this->rateLimitRemaining;
+    }
+
+    public function timeISO8601($time)
+    {
+        return gmdate('c', $time);
     }
 
 }

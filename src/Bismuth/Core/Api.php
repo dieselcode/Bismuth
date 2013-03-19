@@ -273,14 +273,6 @@ class Api
         return $headers;
     }
 
-    /**
-     * TODO: This is highly dependent on the server having a proper timezone
-     */
-    public function timeISO8601()
-    {
-        return gmdate('c', time());
-    }
-
 }
 
 ?>
