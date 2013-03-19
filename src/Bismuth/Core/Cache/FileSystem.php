@@ -12,9 +12,9 @@ class FileSystem implements CacheInterface
     public function __construct($userOpts = array())
     {
         $this->options = new Options(array(
-            'cache_path'     => dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/cache/',
-            'cache_max_age'  => '3600',
-            'cache_max_size' => 0
+            'cachePath'     => dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/cache/',
+            'cacheMaxAge'  => '3600',
+            'cacheMaxSize' => 0
         ));
 
         $this->options->setBulkOptions($userOpts);
@@ -22,25 +22,25 @@ class FileSystem implements CacheInterface
         clearstatcache();
 
         if (!is_writable($this->options->cache_path)) {
-            mkdir($this->options->cache_path, 0777);
+            mkdir($this->options->cachePath, 0777);
         } else {
-            touch($this->options->cache_path);
+            touch($this->options->cachePath);
         }
 
         // make sure the existing cache isn't too large
-        if ($this->options->cache_max_size !== false && $this->getCacheSize() >= $this->options->cache_max_size) {
+        if ($this->options->cache_max_size !== false && $this->getCacheSize() >= $this->options->cacheMaxSize) {
             //$this->purgeCache();
         }
     }
 
     public function getCache($file)
     {
-        $filePath = $this->options->cache_path . $this->generateFileName($file);
+        $filePath = $this->options->cachePath . $this->generateFileName($file);
 
         clearstatcache();
 
         if (file_exists($filePath)) {
-            if ((time() - filemtime($filePath)) < $this->options->cache_max_age) {
+            if ((time() - filemtime($filePath)) < $this->options->cacheMaxAge) {
                 $content = file_get_contents($filePath);
 
 
@@ -57,7 +57,7 @@ class FileSystem implements CacheInterface
 
     public function setCache($file, $content, $forceSerialize = false)
     {
-        $filePath = $this->options->cache_path . $this->generateFileName($file);
+        $filePath = $this->options->cachePath . $this->generateFileName($file);
 
         if (!$this->isSerialized($content) && $forceSerialize) {
             $content = serialize($content);
@@ -68,7 +68,7 @@ class FileSystem implements CacheInterface
 
     public function getCacheSize()
     {
-        $filter = $this->options->cache_path . '*.bcache';
+        $filter = $this->options->cachePath . '*.bcache';
         $fileList = glob($filter);
         $cacheSize = 0;
 
@@ -83,7 +83,7 @@ class FileSystem implements CacheInterface
 
     public function purgeCache()
     {
-        $filter = $this->options->cache_path . '*.bcache';
+        $filter = $this->options->cachePath . '*.bcache';
         $fileList = glob($filter);
 
         if (is_array($fileList)) {
@@ -112,7 +112,7 @@ class FileSystem implements CacheInterface
 
     public function getCachePath()
     {
-        return $this->options->cache_path;
+        return $this->options->cachePath;
     }
 
 }
