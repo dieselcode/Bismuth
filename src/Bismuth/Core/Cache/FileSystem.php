@@ -6,9 +6,14 @@ class FileSystem implements CacheInterface
 {
 
     public $options     = array(
-        'cache_path'    =>  '',
-        'cache_ext'     =>  '.cache',
-        'cache_max_age' =>  3600
+        'cache_path'        =>  '',
+        'cache_ext'         =>  '.cache',
+        'cache_max_age'     =>  3600,
+
+        /**
+         * Size in bytes (set to false to turn purging off)
+         */
+        'cache_max_size'    =>  2097152 // 2 MB
     );
 
     public function __construct($options = array())
@@ -27,12 +32,22 @@ class FileSystem implements CacheInterface
             $this->options['cache_max_age'] = 3600;
         }
 
+        if (empty($this->options['cache_max_size'])) {
+            $this->options['cache_max_size'] = 2097152;
+        }
+
         clearstatcache();
 
         if (!is_writable($this->options['cache_path'])) {
             mkdir($this->options['cache_path'], 0777);
         } else {
             touch($this->options['cache_path']);
+        }
+
+        // make sure the existing cache isn't too large
+        if ($this->options['cache_max_size'] !== false && $this->getCacheSize() >= $this->options['cache_max_size']) {
+            var_dump($this->getCacheSize());
+            $this->purgeCache();
         }
     }
 
@@ -45,6 +60,7 @@ class FileSystem implements CacheInterface
         if (file_exists($filePath)) {
             if ((time() - filemtime($filePath)) < $this->options['cache_max_age']) {
                 $content = file_get_contents($filePath);
+
 
                 if ($this->isSerialized($content)) {
                     $content = unserialize($content);
@@ -66,6 +82,34 @@ class FileSystem implements CacheInterface
         }
 
         file_put_contents($filePath, $content);
+    }
+
+    public function getCacheSize()
+    {
+        $filter = $this->options['cache_path'] . '*' . $this->options['cache_ext'];
+        $fileList = glob($filter);
+        $cacheSize = 0;
+
+        if (is_array($fileList)) {
+            foreach ($fileList as $file) {
+                $cacheSize += filesize($file);
+            }
+        }
+
+        return $cacheSize;
+    }
+
+    public function purgeCache()
+    {
+        $filter = $this->options['cache_path'] . '*' . $this->options['cache_ext'];
+        $fileList = glob($filter);
+
+        if (is_array($fileList)) {
+            foreach ($fileList as $file) {
+                touch($file);
+                unlink($file);
+            }
+        }
     }
 
     public function generateFileName($path)
