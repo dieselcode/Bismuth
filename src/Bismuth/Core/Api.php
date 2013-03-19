@@ -143,7 +143,7 @@ class Api
 
             if ($cache !== false) {
                 // ensure the data is valid
-                if (($cache instanceof Response) && $cache->isCached()) {
+                if (($cache instanceof Response) && !empty($cache->data)) {
                     // return the Response object
                     return $cache;
                 }
@@ -168,6 +168,11 @@ class Api
          *  - Pass an exception to be cached, and upon retrieval of the cache, attempt to renew the cache object
          */
         $this->response = @json_decode(file_get_contents($this->endpointUrl . $remoteURL, false, $ctx), $this->returnStyle);
+
+        if (empty($this->response)) {
+            throw new \Exception('Unable to contact endpoint host.  Please check your settings');
+        }
+
         $this->headers = $this->parseHeaders(join("\r\n", array_values($http_response_header)) . "\r\n\r\n");
 
         // call our header hooks if we have any
