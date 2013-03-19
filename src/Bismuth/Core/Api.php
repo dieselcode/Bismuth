@@ -163,6 +163,10 @@ class Api
 
         $ctx = stream_context_create($context);
 
+        /**
+         * TODO: Capture timeouts and null exceptions here.  GitHub has a habit of this...
+         *  - Pass an exception to be cached, and upon retrieval of the cache, attempt to renew the cache object
+         */
         $this->response = @json_decode(file_get_contents($this->endpointUrl . $remoteURL, false, $ctx), $this->returnStyle);
         $this->headers = $this->parseHeaders(join("\r\n", array_values($http_response_header)) . "\r\n\r\n");
 

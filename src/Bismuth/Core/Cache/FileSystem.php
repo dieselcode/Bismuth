@@ -13,7 +13,7 @@ class FileSystem implements CacheInterface
         /**
          * Size in bytes (set to false to turn purging off)
          */
-        'cache_max_size'    =>  2097152 // 2 MB
+        'cache_max_size'    =>  false
     );
 
     public function __construct($options = array())
