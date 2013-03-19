@@ -2,63 +2,45 @@
 
 namespace Bismuth\Core\Cache;
 
+use Bismuth\Tools\Options;
+
 class FileSystem implements CacheInterface
 {
 
-    public $options     = array(
-        'cache_path'        =>  '',
-        'cache_ext'         =>  '.cache',
-        'cache_max_age'     =>  3600,
+    public $options = null;
 
-        /**
-         * Size in bytes (set to false to turn purging off)
-         */
-        'cache_max_size'    =>  false
-    );
-
-    public function __construct($options = array())
+    public function __construct($userOpts = array())
     {
-        $this->options = $options;
+        $this->options = new Options(array(
+            'cache_path'     => dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/cache/',
+            'cache_max_age'  => '3600',
+            'cache_max_size' => 0
+        ));
 
-        if (empty($this->options['cache_path'])) {
-            $this->options['cache_path'] = dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/cache/';
-        }
-
-        if (empty($this->options['cache_ext'])) {
-            $this->options['cache_ext'] = '.cache';
-        }
-
-        if (empty($this->options['cache_max_age'])) {
-            $this->options['cache_max_age'] = 3600;
-        }
-
-        if (empty($this->options['cache_max_size'])) {
-            $this->options['cache_max_size'] = 2097152;
-        }
+        $this->options->setBulkOptions($userOpts);
 
         clearstatcache();
 
-        if (!is_writable($this->options['cache_path'])) {
-            mkdir($this->options['cache_path'], 0777);
+        if (!is_writable($this->options->cache_path)) {
+            mkdir($this->options->cache_path, 0777);
         } else {
-            touch($this->options['cache_path']);
+            touch($this->options->cache_path);
         }
 
         // make sure the existing cache isn't too large
-        if ($this->options['cache_max_size'] !== false && $this->getCacheSize() >= $this->options['cache_max_size']) {
-            var_dump($this->getCacheSize());
-            $this->purgeCache();
+        if ($this->options->cache_max_size !== false && $this->getCacheSize() >= $this->options->cache_max_size) {
+            //$this->purgeCache();
         }
     }
 
     public function getCache($file)
     {
-        $filePath = $this->options['cache_path'] . $this->generateFileName($file);
+        $filePath = $this->options->cache_path . $this->generateFileName($file);
 
         clearstatcache();
 
         if (file_exists($filePath)) {
-            if ((time() - filemtime($filePath)) < $this->options['cache_max_age']) {
+            if ((time() - filemtime($filePath)) < $this->options->cache_max_age) {
                 $content = file_get_contents($filePath);
 
 
@@ -75,7 +57,7 @@ class FileSystem implements CacheInterface
 
     public function setCache($file, $content, $forceSerialize = false)
     {
-        $filePath = $this->options['cache_path'] . $this->generateFileName($file);
+        $filePath = $this->options->cache_path . $this->generateFileName($file);
 
         if (!$this->isSerialized($content) && $forceSerialize) {
             $content = serialize($content);
@@ -86,7 +68,7 @@ class FileSystem implements CacheInterface
 
     public function getCacheSize()
     {
-        $filter = $this->options['cache_path'] . '*' . $this->options['cache_ext'];
+        $filter = $this->options->cache_path . '*.bcache';
         $fileList = glob($filter);
         $cacheSize = 0;
 
@@ -101,7 +83,7 @@ class FileSystem implements CacheInterface
 
     public function purgeCache()
     {
-        $filter = $this->options['cache_path'] . '*' . $this->options['cache_ext'];
+        $filter = $this->options->cache_path . '*.bcache';
         $fileList = glob($filter);
 
         if (is_array($fileList)) {
@@ -114,7 +96,7 @@ class FileSystem implements CacheInterface
 
     public function generateFileName($path)
     {
-        return md5($path) . $this->options['cache_ext'];
+        return md5($path) . '.bcache';
     }
 
     public function isSerialized($data)
@@ -130,7 +112,7 @@ class FileSystem implements CacheInterface
 
     public function getCachePath()
     {
-        return $this->options['cache_path'];
+        return $this->options->cache_path;
     }
 
 }
