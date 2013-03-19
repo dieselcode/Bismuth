@@ -2,9 +2,9 @@
 
 namespace Bismuth\Core;
 
-use \Bismuth\Core\Auth\Auth,
-    \Bismuth\Core\Response;
-use Bismuth\Tools\Object;
+use \Bismuth\Core\Auth\Auth;
+use \Bismuth\Core\Response;
+
 
 class Api
 {
@@ -145,6 +145,7 @@ class Api
                 // ensure the data is valid
                 if (($cache instanceof Response) && !empty($cache->data)) {
                     // return the Response object
+                    $this->_callHeaderHooks($cache);
                     return $cache;
                 }
             }
@@ -175,20 +176,10 @@ class Api
 
         $this->headers = $this->parseHeaders(join("\r\n", array_values($http_response_header)) . "\r\n\r\n");
 
-        // call our header hooks if we have any
-        if (!empty($this->headerHooks)) {
-            foreach ($this->headerHooks as $head => $callback) {
-                if (array_key_exists($head, $this->headers)) {
-                    if (!$callback instanceof \Closure) {
-                        call_user_func_array($callback, array($this->headers[$head], $this->response));
-                    } else {
-                        $callback($this->headers[$head], $this->response);
-                    }
-                }
-            }
-        }
-
         $responseObj = new Response($this->headers, $this->response);
+
+        // call the header hooks
+        $this->_callHeaderHooks($responseObj);
 
         if (!empty($this->cacheObj)) {
             $cachedResponse = $responseObj;
@@ -221,6 +212,22 @@ class Api
         }
 
         return $url;
+    }
+
+    private function _callHeaderHooks(Response $response)
+    {
+        // call our header hooks if we have any
+        if (!empty($this->headerHooks)) {
+            foreach ($this->headerHooks as $head => $callback) {
+                if (array_key_exists($head, $response->headers)) {
+                    if (!$callback instanceof \Closure) {
+                        call_user_func_array($callback, array($response->headers[$head], $response->data));
+                    } else {
+                        $callback($response->headers[$head], $response->data);
+                    }
+                }
+            }
+        }
     }
 
     public static function parseHeaders($response)

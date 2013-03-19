@@ -31,25 +31,6 @@ class GitHub extends Api
         // hook into the headers to get the rate limits
         $this->addHeaderHook('X-RateLimit-Limit',       function($limit) { $this->rateLimit = $limit; });
         $this->addHeaderHook('X-RateLimit-Remaining',   function($limit) { $this->rateLimitRemaining = $limit; });
-
-        // custom error handling
-        $this->addHeaderHook('HTTP_CODE', array($this, 'errorCodeHandler'));
-    }
-
-    /**
-     * Setup a custom handler for github client errors
-     */
-    protected function errorCodeHandler($errorCode, $response)
-    {
-        switch ($errorCode) {
-            case 400:   // Bad Request
-                break;
-            case 401:   // Unauthorized
-                // $response isn't valid here, because we're just simply unauthorized
-                break;
-            case 422:   // Unprocessable Entity
-                break;
-        }
     }
 
     /**

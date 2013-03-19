@@ -12,10 +12,16 @@ try {
             ->user()                    // user object
             ->current()                 // current user (logged in)
             ->repos()                   // repository object
-            ->list(array(               // repository list (with options)
+            ->list([                    // repository list (with options)
                 'sort' => 'full_name',
                 'direction' => 'asc'
-            ));
+            ]);
+
+    /*
+    $user   = $github->user()->current();
+    $repos  = $user->repos()->list(['sort' => 'full_name', 'direction' => 'asc']);
+    var_dump($repos[0]->name);
+    */
 
     var_dump($api[0]->name);
 
