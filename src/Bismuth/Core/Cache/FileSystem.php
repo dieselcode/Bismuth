@@ -28,8 +28,8 @@ class FileSystem implements CacheInterface
         }
 
         // make sure the existing cache isn't too large
-        if ($this->options->cache_max_size !== false && $this->getCacheSize() >= $this->options->cacheMaxSize) {
-            //$this->purgeCache();
+        if ($this->options->cacheMaxSize !== false && $this->getCacheSize() >= $this->options->cacheMaxSize) {
+            $this->purgeCache();
         }
     }
 
