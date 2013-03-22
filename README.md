@@ -1,4 +1,4 @@
-![Bismuth](http://php-oop.net/~andrew/logos/Bismuth-logo.png)
+![Bismuth](http://php-oop.net/~andrew/logos/Bismuth.png)
 
 Bismuth
 =======
